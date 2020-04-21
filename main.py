@@ -1,3 +1,4 @@
+from socket import gethostbyname
 import discord.ext.commands as commands
 import mcrcon
 import json
@@ -14,7 +15,7 @@ bot = commands.Bot(command_prefix=config["prefix"])
 
 
 def send_rcon(msg):
-	with mcrcon.MCRcon(config["mc_server"], config["rcon_pass"]) as r:
+	with mcrcon.MCRcon(gethostbyname(config["mc_server"]), config["rcon_pass"]) as r:
 		return r.command(msg)
 
 
