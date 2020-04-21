@@ -53,7 +53,7 @@ def add_whitelist(userid, acct):
 		j[str(userid)] = acct
 	with open(wlist, "w") as file:
 		json.dump(j, file)
-	return send_rcon(f"/whitelist add {acct}")
+	return send_rcon(f"whitelist add {acct}")
 
 
 def remove_whitelist(userid, acct):
@@ -62,7 +62,7 @@ def remove_whitelist(userid, acct):
 		del j[str(userid)]
 	with open(wlist, "w") as file:
 		json.dump(j, file)
-	return send_rcon(f"/whitelist remove {acct}")
+	return send_rcon(f"whitelist remove {acct}")
 
 
 @bot.event
@@ -96,7 +96,7 @@ async def whitelist_error(ctx, error):
 
 @bot.command(name="playing")
 async def playing(ctx):
-	await ctx.send(send_rcon("/list"))
+	await ctx.send(send_rcon("list"))
 
 
 def main():
