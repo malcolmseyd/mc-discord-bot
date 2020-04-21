@@ -1,4 +1,4 @@
-import discord.ext.commands
+import discord.ext.commands as commands
 import mcrcon
 import json
 
@@ -9,71 +9,59 @@ except FileNotFoundError:
 	print("Please create a config.json with the following layout:")
 	exit(1)
 
-bot = discord.ext.commands.Bot(command_prefix=config["prefix"])
+wlist = "whitelisted.json"
+bot = commands.Bot(command_prefix=config["prefix"])
+
+
+def send_rcon(msg):
+	with mcrcon.MCRcon(config["mc_server"], config["rcon_pass"]) as r:
+		return r.command(msg)
 
 
 def is_acct_whitelisted(acct):
 	try:
-		with open("whitelisted.txt", "r") as file:
-			for line in file:
-				old_acct = line.split(":")[1].strip()
-				if old_acct == acct:
-					return True
+		with open(wlist, "r") as file:
+			j = json.load(file)
+			if acct in j.values():
+				return True
 			return False
 	except FileNotFoundError:
-		with open("whitelisted.txt", "w+") as file:
+		# Create empty json
+		with open(wlist, "w") as file:
+			file.write("{}")
 			file.close()
 		return False
+	except Exception as e:
+		print(e)
+		exit(1)
 
 
 def get_old_acct(userid):
-	with open("whitelisted.txt", "r") as file:
-		for line in file:
-			if line.split(":")[0] == str(userid):
-				return line.split(":")[1].strip()
-		return ""
-
-
-def already_whitelisted(acct):
-	try:
-		with open("whitelisted.txt", "r") as file:
-			for line in file:
-				old_acct = line.split(":")[1].strip()
-				# Handle either username (given argument)
-				if type(acct) is str:
-					if old_acct == acct:
-						return old_acct
-				# Or user id (from discord)
-				elif type(acct) is int:
-					if line.split(":")[0] == str(acct):
-						return old_acct
+	with open(wlist, "r") as file:
+		j = json.load(file)
+		uid = str(userid)
+		if uid in j:
+			return j[uid]
+		else:
 			return ""
-	except FileNotFoundError:
-		with open("whitelisted.txt", "w+") as file:
-			file.close()
-		return ""
 
 
 def add_whitelist(userid, acct):
-	with mcrcon.MCRcon(config["mc_server"], config["rcon_pass"]) as r:
-		cmd = f"/whitelist add {acct}"
-		message = r.command(cmd)
-	with open("whitelisted.txt", "a") as f:
-		f.write(f"{userid}:{acct}\n")
-	return message
+	with open(wlist, "r") as file:
+		j = json.load(file)
+		j[str(userid)] = acct
+	with open(wlist, "w") as file:
+		json.dump(j, file)
+	return send_rcon(f"/whitelist add {acct}")
 
 
 def remove_whitelist(userid, acct):
-	with mcrcon.MCRcon(config["mc_server"], config["rcon_pass"]) as r:
-		cmd = f"/whitelist remove {acct}"
-		message = r.command(cmd)
-	with open("whitelisted.txt", "r") as file:
-		lines = file.readlines()
-	with open("whitelisted.txt", "w") as file:
-		for line in lines:
-			if str(userid) not in line:
-				file.write(line)
-	return message
+	with open(wlist, "r") as file:
+		j = json.load(file)
+		del j[str(userid)]
+	with open(wlist, "w") as file:
+		json.dump(j, file)
+	return send_rcon(f"/whitelist remove {acct}")
 
 
 @bot.event
@@ -85,24 +73,35 @@ async def on_message(message):
 
 @bot.command(name="whitelist")
 async def whitelist(ctx, arg):
+	print(arg)
 	# First check if the username is already whitelisted.
-	# old_acct = already_whitelisted(arg)
-	# if old_acct == arg:
 	if is_acct_whitelisted(arg):
 		await ctx.send(f"{arg} is already whitelisted")
 	else:
 		# If this user already has an account whitelisted, remove it.
 		old_acct = get_old_acct(ctx.author.id)
 		if old_acct != "":
-			await ctx.send(remove_whitelist(ctx.author.id, old_acct))
+			msg = remove_whitelist(ctx.author.id, old_acct)
+			await ctx.send(msg)
 		# And whitelist the new account
-		await ctx.send(add_whitelist(ctx.author.id, arg))
+		msg = add_whitelist(ctx.author.id, arg)
+		await ctx.send(msg)
+
+
+@whitelist.error
+async def whitelist_error(ctx, error):
+	if isinstance(error, commands.MissingRequiredArgument):
+		await ctx.send("Usage: !whitelist username")
 
 
 @bot.command(name="get_whitelist")
 async def get_whitelist(ctx):
-	with mcrcon.MCRcon(config["mc_server"], config["rcon_pass"]) as r:
-		await ctx.send(r.command(f"/whitelist list"))
+	await ctx.send(send_rcon("/whitelist list"))
+
+
+@bot.command(name="playing")
+async def playing(ctx):
+	await ctx.send(send_rcon("/list"))
 
 
 def main():
