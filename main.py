@@ -73,7 +73,6 @@ async def on_message(message):
 
 @bot.command(name="whitelist")
 async def whitelist(ctx, arg):
-	print(arg)
 	# First check if the username is already whitelisted.
 	if is_acct_whitelisted(arg):
 		await ctx.send(f"{arg} is already whitelisted")
@@ -92,11 +91,6 @@ async def whitelist(ctx, arg):
 async def whitelist_error(ctx, error):
 	if isinstance(error, commands.MissingRequiredArgument):
 		await ctx.send("Usage: !whitelist username")
-
-
-@bot.command(name="get_whitelist")
-async def get_whitelist(ctx):
-	await ctx.send(send_rcon("/whitelist list"))
 
 
 @bot.command(name="playing")
